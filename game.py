@@ -1,11 +1,11 @@
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # File:     game.py
 # Author:   Mark Macerato
 # Date:     April 29, 2015
-# Desc:     This script is the main game program for the Academic Bowl.  It reads the
-#           values of buttons conntected to the RPi's GPIO pins, and can light up LEDs in
-#           response to specific button presses.
-# ------------------------------------------------------------------------------
+# Desc:     This script is the main game program for the Academic Bowl.  It reads
+#           the values of buttons conntected to the RPi's GPIO pins, and can
+#           light up LEDs in response to specific button presses.
+# -------------------------------------------------------------------------------
 # Import GPIO module
 import RPi.GPIO as GPIO
 
@@ -65,8 +65,8 @@ for team in teams:
 # Setup the operator pins
 for pin in pins:
     GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.add_event_detect(yes, GPIO>RISING, bouncetime = 100) # ms
-GPIO.add_event_detect(no, GPIO>RISING, bouncetime = 100) # ms
+GPIO.add_event_detect(yes, GPIO.RISING, bouncetime = 100) # ms
+GPIO.add_event_detect(no, GPIO.RISING, bouncetime = 100) # ms
 
 """
 The following function is the task to be executed periodically in the standby
@@ -92,6 +92,13 @@ The following function handles the question mode.
 def question(quesiton_init):
     if question_init:
         GPIO.add_event_detect(op, GPIO.RISING)
+        # If all teams are out, go to standby
+        team_left = False
+        for team in teams:
+            team_left = team_left or team.alive
+        if not team_left:
+            state = STANDBY
+            return None
     team_buzzed = None
     for team in teams:
         if team.alive:
@@ -100,6 +107,7 @@ def question(quesiton_init):
             if GPIO.event_detected(team.button):
                 team_buzzed = team
                 state = ANSWER
+                break
     # Operator ends the question
     if GPIO.event_detected(op):
         state = STANDBY
@@ -116,7 +124,7 @@ def answer(team_buzzed):
         if team is not team_buzzed:
             GPIO.output(team.led_table, False)
     # Light up the team on the operator board
-    GPIO.output(team.led_op, True)
+    GPIO.output(team_buzzed.led_op, True)
     # Wait for them to answer
     if GPIO.event_detected(yes):
         state = STANDBY
@@ -135,6 +143,7 @@ while True:
     try:
         if state == STANDBY:
             standby()
+            question_init = True
         elif state == QUESTION:
             team_buzzed = question()
             question_init = False
